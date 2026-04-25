@@ -339,6 +339,17 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--t
           <button class="btn btn-sm btn-outline" onclick="lockSection('products')">登出</button>
         </div>
       </div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <input id="prod-search" style="flex:1;min-width:180px;padding:9px 14px;border:1px solid var(--border);border-radius:20px;font-size:13px;font-family:inherit;background:var(--warm-white);outline:none" placeholder="🔍 搜尋品名或型號..." oninput="renderProdMgmt()">
+        <select id="prod-sort" style="padding:9px 14px;border:1px solid var(--border);border-radius:20px;font-size:13px;font-family:inherit;background:var(--warm-white);outline:none;cursor:pointer" onchange="renderProdMgmt()">
+          <option value="default">原始順序</option>
+          <option value="code">按型號排序</option>
+          <option value="name">按品名排序</option>
+          <option value="cat">按類別排序</option>
+          <option value="price_asc">價格低→高</option>
+          <option value="price_desc">價格高→低</option>
+        </select>
+      </div>
       <div id="prod-mgmt-list"></div>
     </div>
   </div>
@@ -807,7 +818,18 @@ function exportOrdersCSV(){
 function renderProdMgmt(){
   const el=document.getElementById('prod-mgmt-list');
   if(!products.length){el.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:30px">尚無商品</div>';return;}
-  el.innerHTML=products.map(p=>`
+  const searchEl=document.getElementById('prod-search');
+  const sortEl=document.getElementById('prod-sort');
+  const q=searchEl?searchEl.value.trim().toLowerCase():'';
+  const sort=sortEl?sortEl.value:'default';
+  let list=products.filter(p=>!q||(p.name+p.code+p.cat).toLowerCase().includes(q));
+  if(sort==='code') list=[...list].sort((a,b)=>(a.code||'').localeCompare(b.code||''));
+  else if(sort==='name') list=[...list].sort((a,b)=>a.name.localeCompare(b.name));
+  else if(sort==='cat') list=[...list].sort((a,b)=>a.cat.localeCompare(b.cat));
+  else if(sort==='price_asc') list=[...list].sort((a,b)=>a.price-b.price);
+  else if(sort==='price_desc') list=[...list].sort((a,b)=>b.price-a.price);
+  if(!list.length){el.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:20px">找不到符合的商品</div>';return;}
+  el.innerHTML=list.map(p=>`
     <div class="prod-item">
       <div class="prod-item-info">
         <div class="prod-item-name">${p.name} <span style="font-size:11px;color:var(--text-muted)">[${p.code||'無型號'}] ${p.cat}</span></div>
@@ -858,52 +880,51 @@ function deleteProd(id){
 
 // ===== PRODUCTS DATA =====
 let products = [
-  {id:1,cat:"觸控燈",code:"MD1435",name:"比得兔三段式觸控燈-落英繽紛",price:1980,size:"W23.5×37cm",material:"鐵、玻璃",variants:["落英繽紛"],desc:"三段調光隨心所欲，精緻觸控設計",img:""},
-  {id:2,cat:"觸控燈",code:"MD1184B",name:"比得兔三段式觸控燈-蘋果",price:1980,size:"W23.5×37cm",material:"鐵、玻璃",variants:["蘋果"],desc:"三段調光隨心所欲，精緻觸控設計",img:""},
-  {id:3,cat:"觸控燈",code:"MD1437",name:"比得兔三段式觸控燈-清新花語",price:1980,size:"W23.5×37cm",material:"鐵、玻璃",variants:["清新花語"],desc:"三段調光隨心所欲，精緻觸控設計",img:""},
-  {id:4,cat:"觸控燈",code:"MD1184C",name:"比得兔三段式觸控燈-花卉",price:1980,size:"W23.5×37cm",material:"鐵、玻璃",variants:["花卉"],desc:"三段調光隨心所欲，精緻觸控設計",img:""},
-  {id:5,cat:"家飾",code:"NF356A",name:"比得兔椅腳套-跑兔藍(4入)",price:150,size:"",material:"布質",variants:["跑兔藍"],desc:"保護椅腳，防滑靜音",img:""},
-  {id:6,cat:"家飾",code:"NF356B",name:"比得兔椅腳套-跑兔粉(4入)",price:150,size:"",material:"布質",variants:["跑兔粉"],desc:"保護椅腳，防滑靜音",img:""},
-  {id:7,cat:"桌巾",code:"NF124A",name:"比得兔北歐風方桌巾-藍",price:650,size:"110×110cm",material:"100% Cotton",variants:["藍"],desc:"北歐風格設計，100%純棉材質",img:""},
-  {id:8,cat:"桌巾",code:"NF124B",name:"比得兔北歐風長桌巾-藍",price:1200,size:"180×120cm",material:"100% Cotton",variants:["藍"],desc:"北歐風格設計，100%純棉材質",img:""},
-  {id:9,cat:"桌巾",code:"NF123A",name:"比得兔北歐風方桌巾-紫",price:650,size:"110×110cm",material:"100% Cotton",variants:["紫"],desc:"北歐風格設計，100%純棉材質",img:""},
-  {id:10,cat:"桌巾",code:"NF123B",name:"比得兔北歐風長桌巾-紫",price:1200,size:"180×120cm",material:"100% Cotton",variants:["紫"],desc:"北歐風格設計，100%純棉材質",img:""},
-  {id:11,cat:"桌墊",code:"NF216A",name:"比得兔藍色小兔橢圓形多用墊",price:420,size:"W31×H27cm",material:"",variants:["藍色"],desc:"",img:""},
-  {id:12,cat:"桌墊",code:"NF216B",name:"比得兔粉紅玫瑰小圓墊",price:180,size:"W15×H15cm",material:"",variants:["粉紅"],desc:"",img:""},
-  {id:13,cat:"桌巾",code:"NF212A",name:"比得兔藍色小兔方形桌巾大號",price:1680,size:"140×140cm",material:"",variants:["藍色"],desc:"",img:""},
-  {id:14,cat:"桌巾",code:"NF212B",name:"比得兔藍色小兔方形桌巾小號",price:1100,size:"110×110cm",material:"",variants:["藍色"],desc:"",img:""},
-  {id:15,cat:"桌巾",code:"NF213A",name:"比得兔粉紅玫瑰方形桌巾大號",price:1680,size:"140×140cm",material:"",variants:["粉紅"],desc:"",img:""},
-  {id:16,cat:"桌巾",code:"NF213B",name:"比得兔粉紅玫瑰方形桌巾小號",price:1100,size:"110×110cm",material:"",variants:["粉紅"],desc:"",img:""},
-  {id:17,cat:"毛巾",code:"PR3653",name:"比得兔棉花雙色緹花毛巾",price:200,size:"33×77cm 110g",material:"100%棉",variants:["粉","藍"],desc:"雙色緹花工藝，100%純棉",img:""},
-  {id:18,cat:"毛巾",code:"PR3652",name:"比得兔菱形雙色緹花精繡毛巾",price:225,size:"33×77cm 110g",material:"100%棉",variants:["粉","藍"],desc:"精繡工藝，100%純棉",img:""},
-  {id:19,cat:"毛巾",code:"PR3651",name:"比得兔方格雙色緹花精繡毛巾",price:225,size:"33×77cm 110g",material:"100%棉",variants:["粉","藍"],desc:"精繡工藝，100%純棉",img:""},
-  {id:20,cat:"毛巾",code:"PR1655",name:"比得兔歡慶雙色緹花童巾",price:125,size:"27×54cm 60g",material:"100%棉",variants:["粉","藍","卡其"],desc:"適合兒童使用，100%純棉",img:""},
-  {id:21,cat:"毛巾",code:"PR1654",name:"比得兔音符雙色緹花童巾",price:125,size:"27×54cm 60g",material:"100%棉",variants:["粉","藍","卡其"],desc:"適合兒童使用，100%純棉",img:""},
-  {id:22,cat:"毛巾",code:"PR051",name:"比得兔蘿蔔雙色緹花方巾",price:88,size:"27×27cm 35g",material:"100%棉",variants:["粉","藍","卡其"],desc:"100%純棉方巾",img:""},
-  {id:23,cat:"毛巾",code:"PR052",name:"比得兔擁抱雙色緹花方巾",price:88,size:"27×27cm 35g",material:"100%棉",variants:["粉","藍","卡其"],desc:"100%純棉方巾",img:""},
-  {id:24,cat:"精油燈",code:"MB1497",name:"比得兔第三代半圓精油燈-落英繽紛",price:680,size:"10.6×12.5cm",material:"陶瓷",variants:["落英繽紛"],desc:"第三代設計，陶瓷材質，可使用精油",img:""},
-  {id:25,cat:"精油燈",code:"MB1525",name:"比得兔第三代半圓精油燈-姊妹情深",price:680,size:"10.6×12.5cm",material:"陶瓷",variants:["姊妹情深"],desc:"第三代設計，陶瓷材質，可使用精油",img:""},
-  {id:26,cat:"精油燈",code:"MB1523",name:"比得兔第三代小精油燈-田園同樂",price:680,size:"7×10cm",material:"陶瓷",variants:["田園同樂"],desc:"小巧精緻，陶瓷材質，可使用精油",img:""},
-  {id:27,cat:"精油燈",code:"MB1520",name:"比得兔第三代小精油燈-花草世界",price:680,size:"7×10cm",material:"陶瓷",variants:["花草世界"],desc:"小巧精緻，陶瓷材質，可使用精油",img:""},
-  {id:28,cat:"精油燈",code:"MB1522",name:"比得兔第三代小精油燈-溫馨情懷",price:680,size:"7×10cm",material:"陶瓷",variants:["溫馨情懷"],desc:"小巧精緻，陶瓷材質，可使用精油",img:""},
-  {id:29,cat:"門簾",code:"NF294A",name:"比得兔長門簾-立兔",price:580,size:"W90×H150cm",material:"100%Polyester，台灣製",variants:["立兔"],desc:"台灣製造，100%聚酯纖維",img:""},
-  {id:30,cat:"抱枕",code:"NF412",name:"比得兔抱枕 NF412",price:499,size:"W45×H45cm",material:"60%Polyester 40%Cotton",variants:["款式NF412"],desc:"60%聚酯纖維+40%棉，舒適柔軟",img:""},
-  {id:31,cat:"抱枕",code:"NF413",name:"比得兔抱枕 NF413",price:499,size:"W45×H45cm",material:"60%Polyester 40%Cotton",variants:["款式NF413"],desc:"60%聚酯纖維+40%棉，舒適柔軟",img:""},
-  {id:32,cat:"抱枕",code:"NF416",name:"比得兔抱枕 NF416",price:499,size:"W45×H45cm",material:"60%Polyester 40%Cotton",variants:["款式NF416"],desc:"60%聚酯纖維+40%棉，舒適柔軟",img:""},
-  {id:33,cat:"抱枕",code:"NF417",name:"比得兔抱枕 NF417",price:499,size:"W45×H45cm",material:"60%Polyester 40%Cotton",variants:["款式NF417"],desc:"60%聚酯纖維+40%棉，舒適柔軟",img:""},
-  {id:34,cat:"擺飾",code:"MD012354",name:"比得兔推車擺飾",price:1050,size:"W20×H17cm",material:"",variants:["標準"],desc:"精緻家飾擺設",img:""},
-  {id:35,cat:"相框",code:"MD0809",name:"比得兔草莓相框",price:1150,size:"W21.5×H17.5cm",material:"",variants:["標準"],desc:"4×6 相框",img:""},
-  {id:36,cat:"相框",code:"MD0369",name:"比得兔南瓜方型相框",price:1150,size:"W18×H23.5×D1cm",material:"",variants:["標準"],desc:"",img:""},
-  {id:37,cat:"相框",code:"MD0792",name:"比得兔相框",price:1200,size:"W17×H20cm",material:"",variants:["標準"],desc:"4×6 相框",img:""},
-  {id:38,cat:"時鐘",code:"MD0638",name:"比得兔座鐘",price:1600,size:"W20×H16×D8cm",material:"",variants:["標準"],desc:"",img:""},
-  {id:39,cat:"家飾",code:"MD0793",name:"比得兔面紙盒",price:1580,size:"W24×H10×D13cm",material:"",variants:["標準"],desc:"",img:""},
-  {id:40,cat:"家飾",code:"MD0826",name:"比得兔WELCOME掛飾",price:1250,size:"W27×H19cm",material:"",variants:["標準"],desc:"",img:""},
-  {id:41,cat:"家飾",code:"MD0807",name:"比得兔草莓壁飾-Welcome",price:1250,size:"W25×H16cm",material:"",variants:["標準"],desc:"",img:""},
-  {id:42,cat:"家飾",code:"MD0624",name:"比得兔玫瑰餐巾架",price:1200,size:"W15×H33cm",material:"",variants:["標準"],desc:"",img:""},
-  {id:43,cat:"包款",code:"BGY1472",name:"比得兔春遊保溫保冷袋",price:720,size:"21×25×15cm",material:"100%Polyester+鋁膜",variants:["藍色","白色"],desc:"內層鋁箔，兼具保溫與保冷；雙邊拉鍊，拉上拉鍊變摺疊袋；可拆可調節肩帶",img:""},
-  {id:44,cat:"包款",code:"BGY1511",name:"比得兔春遊野餐袋(墊)",price:590,size:"展開90×70cm",material:"100%Polyester+鋁膜",variants:["藍色","白色"],desc:"展開90×70cm，折合45×70cm，兼具野餐袋與野餐墊功能",img:""},
-  {id:45,cat:"包款",code:"BGY1510",name:"比得兔春遊盥洗包",price:760,size:"展開39×22×8cm",material:"100%Polyester",variants:["藍色","白色"],desc:"展開39×22×8cm，折合18×22×8cm，附掛勾可懸掛使用",img:""},
-  {id:46,cat:"包款",code:"BGY1509",name:"比得兔春遊後背包",price:880,size:"35×29×13cm",material:"100%Polyester",variants:["藍色","白色"],desc:"35×29×13cm，100%聚酯纖維材質",img:""},
+  {id:1,cat:"觸控燈",code:"MD1435",name:"比得兔三段式觸控燈-落英繽紛",price:1980,size:"W23.5×37cm",material:"鐵、玻璃",variants:["落英繽紛"],desc:"三段調光隨心所欲，精緻觸控設計",img:"https://giovinachou.github.io/peter-rabbit-order/MD1435.png"},
+  {id:2,cat:"觸控燈",code:"MD1184B",name:"比得兔三段式觸控燈-蘋果",price:1980,size:"W23.5×37cm",material:"鐵、玻璃",variants:["蘋果"],desc:"三段調光隨心所欲，精緻觸控設計",img:"https://giovinachou.github.io/peter-rabbit-order/MD1184B.png"},
+  {id:3,cat:"觸控燈",code:"MD1437",name:"比得兔三段式觸控燈-清新花語",price:1980,size:"W23.5×37cm",material:"鐵、玻璃",variants:["清新花語"],desc:"三段調光隨心所欲，精緻觸控設計",img:"https://giovinachou.github.io/peter-rabbit-order/MD1437.png"},
+  {id:4,cat:"觸控燈",code:"MD1184C",name:"比得兔三段式觸控燈-花卉",price:1980,size:"W23.5×37cm",material:"鐵、玻璃",variants:["花卉"],desc:"三段調光隨心所欲，精緻觸控設計",img:"https://giovinachou.github.io/peter-rabbit-order/MD1184C.png"},
+  {id:5,cat:"家飾",code:"NF356A",name:"比得兔椅腳套-跑兔藍(4入)",price:150,size:"",material:"布質",variants:["跑兔藍"],desc:"保護椅腳，防滑靜音",img:"https://giovinachou.github.io/peter-rabbit-order/NF356A.png"},
+  {id:6,cat:"家飾",code:"NF356B",name:"比得兔椅腳套-跑兔粉(4入)",price:150,size:"",material:"布質",variants:["跑兔粉"],desc:"保護椅腳，防滑靜音",img:"https://giovinachou.github.io/peter-rabbit-order/NF356B.png"},
+  {id:7,cat:"桌巾",code:"NF124A",name:"比得兔北歐風方桌巾-藍",price:650,size:"110×110cm",material:"100% Cotton",variants:["藍"],desc:"北歐風格設計，100%純棉材質",img:"https://giovinachou.github.io/peter-rabbit-order/NF124A.png"},
+  {id:8,cat:"桌巾",code:"NF124B",name:"比得兔北歐風長桌巾-藍",price:1200,size:"180×120cm",material:"100% Cotton",variants:["藍"],desc:"北歐風格設計，100%純棉材質",img:"https://giovinachou.github.io/peter-rabbit-order/NF124B.png"},
+  {id:9,cat:"桌巾",code:"NF123A",name:"比得兔北歐風方桌巾-紫",price:650,size:"110×110cm",material:"100% Cotton",variants:["紫"],desc:"北歐風格設計，100%純棉材質",img:"https://giovinachou.github.io/peter-rabbit-order/NF123A.png"},
+  {id:10,cat:"桌巾",code:"NF123B",name:"比得兔北歐風長桌巾-紫",price:1200,size:"180×120cm",material:"100% Cotton",variants:["紫"],desc:"北歐風格設計，100%純棉材質",img:"https://giovinachou.github.io/peter-rabbit-order/NF123B.png"},
+  {id:11,cat:"桌墊",code:"NF216A",name:"比得兔藍色小兔橢圓形多用墊",price:420,size:"W31×H27cm",material:"",variants:["藍色"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/NF216A.png"},
+  {id:12,cat:"桌墊",code:"NF216B",name:"比得兔粉紅玫瑰小圓墊",price:180,size:"W15×H15cm",material:"",variants:["粉紅"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/NF216B.png"},
+  {id:13,cat:"桌巾",code:"NF212A",name:"比得兔藍色小兔方形桌巾大號",price:1680,size:"140×140cm",material:"",variants:["藍色"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/NF212A.png"},
+  {id:14,cat:"桌巾",code:"NF212B",name:"比得兔藍色小兔方形桌巾小號",price:1100,size:"110×110cm",material:"",variants:["藍色"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/NF212B.png"},
+  {id:15,cat:"桌巾",code:"NF213A",name:"比得兔粉紅玫瑰方形桌巾大號",price:1680,size:"140×140cm",material:"",variants:["粉紅"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/NF213A.png"},
+  {id:16,cat:"桌巾",code:"NF213B",name:"比得兔粉紅玫瑰方形桌巾小號",price:1100,size:"110×110cm",material:"",variants:["粉紅"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/NF213B.png"},
+  {id:17,cat:"毛巾",code:"PR3653",name:"比得兔棉花雙色緹花毛巾",price:200,size:"33×77cm 110g",material:"100%棉",variants:["粉","藍"],desc:"雙色緹花工藝，100%純棉",img:"https://giovinachou.github.io/peter-rabbit-order/PR3653.png"},
+  {id:18,cat:"毛巾",code:"PR3652",name:"比得兔菱形雙色緹花精繡毛巾",price:225,size:"33×77cm 110g",material:"100%棉",variants:["粉","藍"],desc:"精繡工藝，100%純棉",img:"https://giovinachou.github.io/peter-rabbit-order/PR3652.png"},
+  {id:19,cat:"毛巾",code:"PR3651",name:"比得兔方格雙色緹花精繡毛巾",price:225,size:"33×77cm 110g",material:"100%棉",variants:["粉","藍"],desc:"精繡工藝，100%純棉",img:"https://giovinachou.github.io/peter-rabbit-order/PR3651.png"},
+  {id:20,cat:"毛巾",code:"PR1655",name:"比得兔歡慶雙色緹花童巾",price:125,size:"27×54cm 60g",material:"100%棉",variants:["粉","藍","卡其"],desc:"適合兒童使用，100%純棉",img:"https://giovinachou.github.io/peter-rabbit-order/PR1655.png"},
+  {id:22,cat:"毛巾",code:"PR051",name:"比得兔蘿蔔雙色緹花方巾",price:88,size:"27×27cm 35g",material:"100%棉",variants:["粉","藍","卡其"],desc:"100%純棉方巾",img:"https://giovinachou.github.io/peter-rabbit-order/PR051.png"},
+  {id:23,cat:"毛巾",code:"PR052",name:"比得兔擁抱雙色緹花方巾",price:88,size:"27×27cm 35g",material:"100%棉",variants:["粉","藍","卡其"],desc:"100%純棉方巾",img:"https://giovinachou.github.io/peter-rabbit-order/PR052.png"},
+  {id:24,cat:"精油燈",code:"MB1497",name:"比得兔第三代半圓精油燈-落英繽紛",price:680,size:"10.6×12.5cm",material:"陶瓷",variants:["落英繽紛"],desc:"第三代設計，陶瓷材質，可使用精油",img:"https://giovinachou.github.io/peter-rabbit-order/MB1497.png"},
+  {id:25,cat:"精油燈",code:"MB1525",name:"比得兔第三代半圓精油燈-姊妹情深",price:680,size:"10.6×12.5cm",material:"陶瓷",variants:["姊妹情深"],desc:"第三代設計，陶瓷材質，可使用精油",img:"https://giovinachou.github.io/peter-rabbit-order/MB1525.png"},
+  {id:26,cat:"精油燈",code:"MB1523",name:"比得兔第三代小精油燈-田園同樂",price:680,size:"7×10cm",material:"陶瓷",variants:["田園同樂"],desc:"小巧精緻，陶瓷材質，可使用精油",img:"https://giovinachou.github.io/peter-rabbit-order/MB1523.png"},
+  {id:27,cat:"精油燈",code:"MB1520",name:"比得兔第三代小精油燈-花草世界",price:680,size:"7×10cm",material:"陶瓷",variants:["花草世界"],desc:"小巧精緻，陶瓷材質，可使用精油",img:"https://giovinachou.github.io/peter-rabbit-order/MB1520.png"},
+  {id:28,cat:"精油燈",code:"MB1522",name:"比得兔第三代小精油燈-溫馨情懷",price:680,size:"7×10cm",material:"陶瓷",variants:["溫馨情懷"],desc:"小巧精緻，陶瓷材質，可使用精油",img:"https://giovinachou.github.io/peter-rabbit-order/MB1522.png"},
+  {id:29,cat:"門簾",code:"NF294A",name:"比得兔長門簾-立兔",price:580,size:"W90×H150cm",material:"100%Polyester，台灣製",variants:["立兔"],desc:"台灣製造，100%聚酯纖維",img:"https://giovinachou.github.io/peter-rabbit-order/NF294A.png"},
+  {id:30,cat:"抱枕",code:"NF412",name:"比得兔抱枕 NF412",price:499,size:"W45×H45cm",material:"60%Polyester 40%Cotton",variants:["款式NF412"],desc:"60%聚酯纖維+40%棉，舒適柔軟",img:"https://giovinachou.github.io/peter-rabbit-order/NF412.png"},
+  {id:31,cat:"抱枕",code:"NF413",name:"比得兔抱枕 NF413",price:499,size:"W45×H45cm",material:"60%Polyester 40%Cotton",variants:["款式NF413"],desc:"60%聚酯纖維+40%棉，舒適柔軟",img:"https://giovinachou.github.io/peter-rabbit-order/NF413.png"},
+  {id:32,cat:"抱枕",code:"NF416",name:"比得兔抱枕 NF416",price:499,size:"W45×H45cm",material:"60%Polyester 40%Cotton",variants:["款式NF416"],desc:"60%聚酯纖維+40%棉，舒適柔軟",img:"https://giovinachou.github.io/peter-rabbit-order/NF416.png"},
+  {id:33,cat:"抱枕",code:"NF417",name:"比得兔抱枕 NF417",price:499,size:"W45×H45cm",material:"60%Polyester 40%Cotton",variants:["款式NF417"],desc:"60%聚酯纖維+40%棉，舒適柔軟",img:"https://giovinachou.github.io/peter-rabbit-order/NF417.png"},
+  {id:34,cat:"擺飾",code:"MD012354",name:"比得兔推車擺飾",price:1050,size:"W20×H17cm",material:"",variants:["標準"],desc:"精緻家飾擺設",img:"https://giovinachou.github.io/peter-rabbit-order/MD012354.png"},
+  {id:35,cat:"相框",code:"MD0809",name:"比得兔草莓相框",price:1150,size:"W21.5×H17.5cm",material:"",variants:["標準"],desc:"4×6 相框",img:"https://giovinachou.github.io/peter-rabbit-order/MD0809.png"},
+  {id:36,cat:"相框",code:"MD0369",name:"比得兔南瓜方型相框",price:1150,size:"W18×H23.5×D1cm",material:"",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/MD0369.png"},
+  {id:37,cat:"相框",code:"MD0792",name:"比得兔相框",price:1200,size:"W17×H20cm",material:"",variants:["標準"],desc:"4×6 相框",img:"https://giovinachou.github.io/peter-rabbit-order/MD0792.png"},
+  {id:38,cat:"時鐘",code:"MD0638",name:"比得兔座鐘",price:1600,size:"W20×H16×D8cm",material:"",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/MD0638.png"},
+  {id:39,cat:"家飾",code:"MD0793",name:"比得兔面紙盒",price:1580,size:"W24×H10×D13cm",material:"",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/MD0793.png"},
+  {id:40,cat:"家飾",code:"MD0826",name:"比得兔WELCOME掛飾",price:1250,size:"W27×H19cm",material:"",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/MD0826.png"},
+  {id:41,cat:"家飾",code:"MD0807",name:"比得兔草莓壁飾-Welcome",price:1250,size:"W25×H16cm",material:"",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/MD0807.png"},
+  {id:42,cat:"家飾",code:"MD0624",name:"比得兔玫瑰餐巾架",price:1200,size:"W15×H33cm",material:"",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/MD0624.png"},
+  {id:43,cat:"包款",code:"BGY1472",name:"比得兔春遊保溫保冷袋",price:720,size:"21×25×15cm",material:"100%Polyester+鋁膜",variants:["藍色","白色"],desc:"內層鋁箔，兼具保溫與保冷；雙邊拉鍊，拉上拉鍊變摺疊袋；可拆可調節肩帶",img:"https://giovinachou.github.io/peter-rabbit-order/BGY1472.png"},
+  {id:44,cat:"包款",code:"BGY1511",name:"比得兔春遊野餐袋(墊)",price:590,size:"展開90×70cm",material:"100%Polyester+鋁膜",variants:["藍色","白色"],desc:"展開90×70cm，折合45×70cm，兼具野餐袋與野餐墊功能",img:"https://giovinachou.github.io/peter-rabbit-order/BGY1511.png"},
+  {id:45,cat:"包款",code:"BGY1510",name:"比得兔春遊盥洗包",price:760,size:"展開39×22×8cm",material:"100%Polyester",variants:["藍色","白色"],desc:"展開39×22×8cm，折合18×22×8cm，附掛勾可懸掛使用",img:"https://giovinachou.github.io/peter-rabbit-order/BGY1510.png"},
+  {id:46,cat:"包款",code:"BGY1509",name:"比得兔春遊後背包",price:880,size:"35×29×13cm",material:"100%Polyester",variants:["藍色","白色"],desc:"35×29×13cm，100%聚酯纖維材質",img:"https://giovinachou.github.io/peter-rabbit-order/BGY1509.png"},
   {id:47,cat:"馬克杯",code:"YH1646",name:"比得兔420ml陶瓷馬克杯-湛藍",price:650,size:"W9.5×H8.5cm 420ml",material:"瓷土",variants:["湛藍"],desc:"420ml大容量，瓷土材質，建議使用溫度80-90度，精美彩盒包裝",img:""},
   {id:48,cat:"馬克杯",code:"YH1646-1",name:"比得兔420ml陶瓷馬克杯-月光白",price:650,size:"W9.5×H8.5cm 420ml",material:"瓷土",variants:["月光白"],desc:"420ml大容量，瓷土材質，建議使用溫度80-90度，精美彩盒包裝",img:""},
   {id:49,cat:"口罩",code:"FM557D",name:"比得兔4D立體醫療口罩-花田趣(8枚入)",price:199,size:"20.5×8cm",material:"防潑水不織布/溶喴不織布",variants:["花田趣"],desc:"4D立體設計，防潑水不織布，8枚入",img:""},
