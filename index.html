@@ -112,6 +112,10 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--t
 .cart-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:149}
 .cart-overlay.open{display:block}
 .mobile-badge{position:absolute;top:-4px;right:-4px;background:var(--sage);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;display:flex;align-items:center;justify-content:center;font-weight:700}
+/* Mobile image hint */
+.img-hint-bar{display:none;position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:rgba(58,46,40,.82);color:#fff;font-size:12px;padding:8px 18px;border-radius:20px;z-index:155;white-space:nowrap;pointer-events:none;animation:fadeInUp .35s ease}
+@keyframes fadeInUp{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@media(max-width:768px){.img-hint-bar.show{display:block}}
 /* Lightbox */
 .lightbox-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;align-items:center;justify-content:center;cursor:zoom-out}
 .lightbox-overlay.open{display:flex}
@@ -344,6 +348,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--t
         <h2>商品管理</h2>
         <div class="admin-btns">
           <button class="btn btn-sm btn-primary" onclick="openAddProd()">＋ 新增商品</button>
+          <button class="btn btn-sm btn-outline" onclick="exportProductsCSV()">匯出商品 CSV</button>
           <button class="btn btn-sm btn-outline" onclick="lockSection('products')">登出</button>
         </div>
       </div>
@@ -364,6 +369,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--t
 </div>
 
 <!-- Mobile cart overlay -->
+<div class="img-hint-bar" id="img-hint-bar">👆 長按圖片可預覽全圖</div>
 <div class="cart-overlay" id="cart-overlay" onclick="toggleMobileCart()"></div>
 
 <!-- Mobile cart toggle -->
@@ -499,7 +505,7 @@ function renderProducts(){
   if(!list.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:40px;font-size:13px">找不到符合的商品</div>';return;}
   grid.innerHTML=list.map(p=>{
     const ep=empPrice(p.price);
-    const imgHtml=p.img?`<img src="${p.img}" alt="${p.name}" onclick="openLightbox('${p.img}','${p.name.replace(/'/g,'\\\'')}')" style="cursor:zoom-in">`:`<span style="font-size:40px">🐰</span>`;
+    const imgHtml=p.img?`<img src="${p.img}" alt="${p.name}" onclick="openLightbox('${p.img}','${p.name.replace(/'/g,'\\\'')}')" ontouchstart="startLongPress(event,'${p.img}','${p.name.replace(/'/g,'\\\'')}')" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()" style="cursor:zoom-in">`:`<span style="font-size:40px">🐰</span>`;
     const varHtml=p.variants.map((v,vi)=>{
       const k=p.id+'_'+vi;
       const qty=cart[k]?cart[k].qty:0;
@@ -1015,7 +1021,7 @@ let products = [
   {id:118,cat:"時鐘",code:"MD1007",name:"比得兔古典風壁鐘",price:3050,size:"52.7×52.7cm",material:"",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/MD1007.png"},
   {id:119,cat:"家飾",code:"MD1006",name:"比得兔古典風面紙盒",price:1720,size:"22.4×12.5×12.9cm",material:"",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/MD1006.png"},
   {id:120,cat:"家飾",code:"MD0866A",name:"比得兔北歐風水果盤-大",price:1780,size:"W34×H27.5×D9.5cm",material:"",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/MD0866A.png"},
-  {id:121,cat:"抱枕",code:"NF456",name:"比得兔抱枕-側跑兔",price:760,size:"48×48cm",material:"65%聚酯纖維 35%棉",variants:["標準"],desc:"65%聚酯纖維+35%棉",img:""},
+  {id:121,cat:"抱枕",code:"NF456",name:"比得兔抱枕-側跑兔",price:760,size:"48×48cm",material:"65%聚酯纖維 35%棉",variants:["標準"],desc:"65%聚酯纖維+35%棉",img:"https://giovinachou.github.io/peter-rabbit-order/NF456.png"},
   {id:122,cat:"腰枕",code:"NF454-1",name:"比得兔腰枕-跑兔",price:499,size:"38×29cm",material:"65%聚酯纖維 35%棉",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/NF454-1.png"},
   {id:123,cat:"腰枕",code:"NF456-1",name:"比得兔腰枕-側跑兔",price:499,size:"38×29cm",material:"65%聚酯纖維 35%棉",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/NF456-1.png"},
   {id:124,cat:"面紙套",code:"NF458",name:"比得兔面紙套-南瓜",price:250,size:"13×29×6cm",material:"",variants:["南瓜"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/NF458.png"},
@@ -1088,7 +1094,7 @@ let products = [
   {id:191,cat:"毛巾",code:"PR3251",name:"比得兔歐風精繡毛巾",price:163,size:"33×76cm 95g",material:"100%棉",variants:["粉","藍","綠","灰"],desc:"歐風精繡設計，100%純棉",img:"https://giovinachou.github.io/peter-rabbit-order/PR3251.png"},
   {id:192,cat:"毛巾",code:"PR1251",name:"比得兔歐風精繡浴巾",price:550,size:"70×140cm 425g",material:"100%棉",variants:["粉","藍","綠","灰"],desc:"歐風精繡設計，100%純棉",img:"https://giovinachou.github.io/peter-rabbit-order/PR1251.png"},
   {id:193,cat:"毛巾",code:"PR1651",name:"比得兔歐風精繡方巾",price:113,size:"33×33cm 50g",material:"100%棉",variants:["粉","藍","綠","灰"],desc:"歐風精繡設計，100%純棉",img:"https://giovinachou.github.io/peter-rabbit-order/PR1651.png"},
-  {id:194,cat:"毛巾",code:"PR3253",name:"比得兔蕾絲緹花精繡毛巾",price:175,size:"33×76cm 95g",material:"100%棉",variants:["紅","藍","綠"],desc:"蕾絲緹花精繡工藝，100%純棉",img:""},
+  {id:194,cat:"毛巾",code:"PR3253",name:"比得兔蕾絲緹花精繡毛巾",price:175,size:"33×76cm 95g",material:"100%棉",variants:["紅","藍","綠"],desc:"蕾絲緹花精繡工藝，100%純棉",img:"https://giovinachou.github.io/peter-rabbit-order/PR3253.png"},
   {id:195,cat:"毛巾",code:"PR1253",name:"比得兔蕾絲緹花精繡浴巾",price:625,size:"70×140cm 425g",material:"100%棉",variants:["紅","藍","綠"],desc:"蕾絲緹花精繡工藝，100%純棉",img:"https://giovinachou.github.io/peter-rabbit-order/PR1253.png"},
   {id:196,cat:"毛巾",code:"PR1653",name:"比得兔蕾絲緹花精繡方巾",price:125,size:"33×33cm 50g",material:"100%棉",variants:["紅","藍","綠"],desc:"蕾絲緹花精繡工藝，100%純棉",img:"https://giovinachou.github.io/peter-rabbit-order/PR1653.png"},
   {id:197,cat:"抱枕",code:"NF1356",name:"比得兔節慶抱枕-新年燈籠款",price:680,size:"48×48cm",material:"",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/NF1356.png"},
@@ -1105,7 +1111,7 @@ let products = [
   {id:208,cat:"存錢筒",code:"MD0381",name:"比得兔彩蛋存錢筒",price:2070,size:"W13×H30cm",material:"",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/MD0381.png"},
   {id:209,cat:"存錢筒",code:"MD0513",name:"比得兔WELCOME立兔存錢筒",price:2600,size:"W30×H40cm",material:"",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/MD0513.png"},
   {id:210,cat:"存錢筒",code:"MD0445",name:"比得兔藍莓存錢筒",price:1980,size:"D20×W19×H30cm",material:"",variants:["標準"],desc:"",img:"https://giovinachou.github.io/peter-rabbit-order/MD0445.png"},
-  {id:211,cat:"保鮮盒",code:"R-1600-1P",name:"比得兔方型玻璃保鮮盒",price:155,size:"14.5×14.5×高6.3cm 650cc",material:"玻璃+食品級PP，彩盒包裝",variants:["標準"],desc:"650cc±5%，玻璃+食品級PP，彩盒包裝",img:""},
+  {id:211,cat:"保鮮盒",code:"R-1600-1P",name:"比得兔方型玻璃保鮮盒",price:155,size:"14.5×14.5×高6.3cm 650cc",material:"玻璃+食品級PP，彩盒包裝",variants:["標準"],desc:"650cc±5%，玻璃+食品級PP，彩盒包裝",img:"https://giovinachou.github.io/peter-rabbit-order/R-1600-1P.png"},
   {id:212,cat:"保鮮盒",code:"R-500-1P",name:"比得兔長方型玻璃保鮮盒(大)",price:245,size:"20.3×15.3×高6.6cm 950cc",material:"玻璃+食品級PP，彩盒包裝",variants:["標準"],desc:"950cc±5%，玻璃+食品級PP，彩盒包裝",img:"https://giovinachou.github.io/peter-rabbit-order/R-500-1P.png"},
   {id:213,cat:"悠遊卡",code:"KC0552",name:"比得兔絨毛吊飾悠遊卡-愛心",price:680,size:"H12×W8×D6.5cm（含配件約19cm）",material:"絨毛布100%polyester",variants:["愛心"],desc:"比得兔造型絨毛吊飾悠遊卡，感應晶片模組台灣製，絨毛中國製",img:"https://giovinachou.github.io/peter-rabbit-order/KC0552.png"},
   {id:214,cat:"悠遊卡",code:"KC0553",name:"班傑明絨毛吊飾悠遊卡-120週年",price:680,size:"H12×W8×D6.5cm（含配件約19cm）",material:"絨毛布100%polyester",variants:["120週年"],desc:"班傑明造型絨毛吊飾悠遊卡，感應晶片模組台灣製，絨毛中國製",img:"https://giovinachou.github.io/peter-rabbit-order/KC0553.png"},
@@ -1125,7 +1131,41 @@ function scrollToProduct(pid){
   },100);
 }
 
+// ===== EXPORT PRODUCTS CSV =====
+function exportProductsCSV(){
+  let csv='\uFEFF類別,型號,品名,型錄原價,員工價,尺寸,材質規格,款式,商品介紹,圖片網址\n';
+  products.forEach(p=>{
+    const ep=empPrice(p.price);
+    const variants=p.variants.filter(v=>v!=='標準').join('／')||'標準';
+    csv+=`"${p.cat}","${p.code||''}","${p.name}",${p.price},${ep},"${p.size||''}","${p.material||''}","${variants}","${p.desc||''}","${p.img||''}"\n`;
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download='比得兔商品清單.csv';
+  a.click();
+}
+
+// ===== MOBILE IMAGE HINT =====
+(function(){
+  if(!/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent))return;
+  if(localStorage.getItem('pr_img_hint_seen'))return;
+  // Show hint ~1.5s after page load
+  setTimeout(()=>{
+    const bar=document.getElementById('img-hint-bar');
+    if(bar){
+      bar.classList.add('show');
+      setTimeout(()=>{bar.classList.remove('show');},4000);
+      localStorage.setItem('pr_img_hint_seen','1');
+    }
+  },1500);
+})();
+
 // ===== LIGHTBOX =====
+let _lpTimer=null;
+function startLongPress(e,src,alt){
+  _lpTimer=setTimeout(()=>{openLightbox(src,alt);},500);
+}
+function cancelLongPress(){clearTimeout(_lpTimer);}
 function openLightbox(src,alt){
   document.getElementById('lightbox-img').src=src;
   document.getElementById('lightbox-img').alt=alt||'';
