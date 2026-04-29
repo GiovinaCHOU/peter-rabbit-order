@@ -318,6 +318,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--t
         <h2>訂單總覽</h2>
         <div class="admin-btns">
           <button class="btn btn-sm btn-outline" onclick="exportOrdersCSV()">匯出訂單 CSV</button>
+          <button class="btn btn-sm btn-outline" onclick="loadOrdersFromSheet()">🔄 重新整理</button>
           <button class="btn btn-sm btn-outline" onclick="lockSection('admin')">登出</button>
         </div>
       </div>
@@ -477,7 +478,7 @@ function switchTab(t){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+t).classList.add('active');
   if(t==='order') renderProducts();
-  if(t==='admin'&&unlocked.admin) renderAdmin();
+  if(t==='admin'&&unlocked.admin) loadOrdersFromSheet();
   if(t==='products'&&unlocked.products) renderProdMgmt();
 }
 
@@ -698,7 +699,7 @@ function checkPw(section){
     document.getElementById(section+'-lock').style.display='none';
     document.getElementById(section+'-content').style.display='block';
     err.textContent='';
-    if(section==='admin')renderAdmin();
+    if(section==='admin')loadOrdersFromSheet();
     if(section==='products')renderProdMgmt();
   }else{err.textContent='密碼錯誤，請重試';document.getElementById(section+'-pw').value='';}
 }
@@ -711,6 +712,27 @@ function lockSection(section){
 }
 
 // ===== ADMIN =====
+// ===== LOAD ORDERS FROM SHEET =====
+function loadOrdersFromSheet(){
+  const el=document.getElementById('admin-orders');
+  const metrics=document.getElementById('admin-metrics');
+  if(el) el.innerHTML='<div class="no-orders" style="padding:30px;text-align:center;color:var(--text-muted)">⏳ 載入訂單中...</div>';
+  if(metrics) metrics.innerHTML='';
+  fetch(SCRIPT_URL+'?t='+Date.now())
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.result==='ok'){
+        orders=data.orders||[];
+        renderAdmin();
+      } else {
+        if(el) el.innerHTML='<div class="no-orders" style="color:#c0392b;padding:30px;text-align:center">❌ 載入失敗：'+( data.message||'未知錯誤')+'</div>';
+      }
+    })
+    .catch(err=>{
+      if(el) el.innerHTML='<div class="no-orders" style="color:#c0392b;padding:30px;text-align:center">❌ 無法連線，請確認網路與 GAS 設定</div>';
+    });
+}
+
 function renderAdmin(){
   const totalRev=orders.reduce((s,o)=>s+o.total,0);
   const totalCost=Math.round(orders.reduce((s,o)=>s+o.totalCost,0)*10)/10;
@@ -768,10 +790,19 @@ function openDeleteModal(id){
 function confirmDelete(){
   const pw=document.getElementById('delete-pw').value;
   if(pw!==ADMIN_PW){document.getElementById('delete-err').textContent='密碼錯誤';document.getElementById('delete-pw').value='';return;}
-  orders=orders.filter(o=>o.id!==deletingOrderId);
+  const idToDelete=deletingOrderId;
+  // 先關閉 modal，更新前端
+  orders=orders.filter(o=>o.id!==idToDelete);
   deletingOrderId=null;
   closeModal('delete-modal');
   renderAdmin();
+  // 真正刪除試算表資料
+  fetch(SCRIPT_URL,{
+    method:'POST',
+    mode:'no-cors',
+    headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({action:'delete', orderId: idToDelete})
+  }).catch(()=>{});
 }
 
 // ===== COST DETAIL =====
