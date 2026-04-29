@@ -734,8 +734,13 @@ function loadOrdersFromSheet(){
 }
 
 function renderAdmin(){
-  const totalRev=orders.reduce((s,o)=>s+o.total,0);
-  const totalCost=Math.round(orders.reduce((s,o)=>s+o.totalCost,0)*10)/10;
+  // 確保所有數值正確（從試算表讀回來的可能是字串）
+  orders.forEach(o=>{
+    o.total=Math.round(o.items.reduce((s,it)=>s+(Number(it.subtotal)||0),0));
+    o.totalCost=Math.round(o.items.reduce((s,it)=>s+(Number(it.costSubtotal)||0),0));
+  });
+  const totalRev=Math.round(orders.reduce((s,o)=>s+o.total,0));
+  const totalCost=Math.round(orders.reduce((s,o)=>s+o.totalCost,0));
   document.getElementById('admin-metrics').innerHTML=`
     <div class="metric-card"><div class="metric-label">訂單數</div><div class="metric-value">${orders.length}</div></div>
     <div class="metric-card"><div class="metric-label">員工應付總額</div><div class="metric-value">NT$${totalRev.toLocaleString()}</div></div>
@@ -746,36 +751,45 @@ function renderAdmin(){
     </div>`;
   const el=document.getElementById('admin-orders');
   if(!orders.length){el.innerHTML='<div class="no-orders">🐰 尚無訂單資料</div>';return;}
-  el.innerHTML=orders.map(o=>`
+  el.innerHTML=orders.map(o=>{
+    const total=Math.round(o.items.reduce((s,it)=>s+(Number(it.subtotal)||0),0));
+    return `
     <div class="order-card">
       <div class="order-card-header">
         <div>
-          <div class="order-person">${o.name}</div>
-          <div class="order-meta-info">${o.dept} ／ ${o.phone}</div>
+          <div class="order-person">${o.name||'—'}</div>
+          <div class="order-meta-info">${o.dept||'—'} ／ ${o.phone||'—'}</div>
         </div>
         <div class="order-time-del">
-          <span class="order-time">${o.time}</span>
-          <button class="btn btn-sm btn-danger" onclick="openDeleteModal(${o.id})">刪除</button>
+          <span class="order-time">${o.time||''}</span>
+          <button class="btn btn-sm btn-danger" onclick="openDeleteModal('${o.id}')">刪除</button>
         </div>
       </div>
       <div class="order-items-list">
         <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;padding:4px 0 6px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-muted);font-weight:600">
-          <span>品名</span><span style="text-align:right">員工單價</span><span style="text-align:right">數量</span><span style="text-align:right">小計</span>
+          <span>品名／型號</span><span style="text-align:right">員工單價</span><span style="text-align:right">數量</span><span style="text-align:right">小計</span>
         </div>
         ${o.items.map(it=>{
-          const vname=it.variant==='標準'?'':' ('+it.variant+')';
+          const vname=(it.variant&&it.variant!=='標準')?' ('+it.variant+')':'';
+          const ep=Math.round(Number(it.empPrice)||0);
+          const qty=Number(it.qty)||0;
+          const sub=Math.round(Number(it.subtotal)||0);
           return `<div class="order-item-row">
-            <div><div class="order-item-name">${it.name}${vname}</div><div class="order-item-variant">${it.code||''}</div></div>
-            <div class="order-item-emp" style="text-align:right">NT$${it.empPrice.toLocaleString()}</div>
-            <div class="order-item-qty" style="text-align:right">×${it.qty}</div>
-            <div class="order-item-emp" style="text-align:right">NT$${it.subtotal.toLocaleString()}</div>
+            <div>
+              <div class="order-item-name">${it.name||'—'}${vname}</div>
+              <div class="order-item-variant">${it.code||''} ${it.cat?'／'+it.cat:''}</div>
+            </div>
+            <div class="order-item-emp" style="text-align:right">NT$${ep.toLocaleString()}</div>
+            <div class="order-item-qty" style="text-align:right">×${qty}</div>
+            <div class="order-item-emp" style="text-align:right">NT$${sub.toLocaleString()}</div>
           </div>`;
         }).join('')}
       </div>
       <div class="order-footer">
-        <span class="order-footer-total">員工應付合計 <strong>NT$${o.total.toLocaleString()}</strong></span>
+        <span class="order-footer-total">員工應付合計 <strong>NT$${total.toLocaleString()}</strong></span>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ===== DELETE ORDER =====
@@ -808,35 +822,43 @@ function confirmDelete(){
 // ===== COST DETAIL =====
 function openCostDetail(){
   if(!orders.length){alert('目前沒有訂單資料');return;}
-  // 彙總所有品項
   const map={};
   orders.forEach(o=>o.items.forEach(it=>{
-    const key=(it.code||'')+it.name+it.variant;
-    if(!map[key]) map[key]={code:it.code||'',name:it.name,variant:it.variant,price:it.price,cost:it.cost,qty:0,costTotal:0};
-    map[key].qty+=it.qty;
-    map[key].costTotal=Math.round((map[key].costTotal+it.costSubtotal)*10)/10;
+    const key=(it.code||'')+'|'+(it.name||'')+'|'+(it.variant||'');
+    const empP=Math.round(Number(it.empPrice)||0);
+    const costP=Math.round(Number(it.cost)||0);
+    const origP=costP>0?Math.round(costP/0.6/1.05):0;
+    const qty=Number(it.qty)||0;
+    const costSub=Math.round(Number(it.costSubtotal)||0);
+    if(!map[key]) map[key]={code:it.code||'',name:it.name||'',variant:it.variant||'',origPrice:origP,empPrice:empP,costPrice:costP,qty:0,costTotal:0};
+    map[key].qty+=qty;
+    map[key].costTotal+=costSub;
   }));
   const rows=Object.values(map).sort((a,b)=>b.costTotal-a.costTotal);
-  const grandTotal=Math.round(rows.reduce((s,r)=>s+r.costTotal,0)*10)/10;
+  const grandTotal=Math.round(rows.reduce((s,r)=>s+r.costTotal,0));
   const grandQty=rows.reduce((s,r)=>s+r.qty,0);
+  const invoice=Math.round(grandTotal*0.05);
   document.getElementById('cost-table').innerHTML=`
     <thead><tr>
-      <th>型號</th><th>品名</th><th>款式</th><th style="text-align:right">型錄原價</th>
-      <th style="text-align:right">進貨單價</th><th style="text-align:right">總數量</th><th style="text-align:right">進貨總額</th>
+      <th>型號</th><th>品名</th><th>款式</th>
+      <th style="text-align:right">型錄原價</th>
+      <th style="text-align:right">員工價</th>
+      <th style="text-align:right">進貨單價</th>
+      <th style="text-align:right">數量</th>
+      <th style="text-align:right">進貨小計</th>
     </tr></thead>
     <tbody>
       ${rows.map(r=>`<tr>
-        <td>${r.code}</td><td>${r.name}</td><td>${r.variant==='標準'?'—':r.variant}</td>
-        <td class="num">NT$${r.price.toLocaleString()}</td>
-        <td class="num">NT$${r.cost.toLocaleString()}</td>
+        <td>${r.code}</td><td>${r.name}</td><td>${!r.variant||r.variant==='標準'?'—':r.variant}</td>
+        <td class="num">NT$${r.origPrice.toLocaleString()}</td>
+        <td class="num">NT$${r.empPrice.toLocaleString()}</td>
+        <td class="num">NT$${r.costPrice.toLocaleString()}</td>
         <td class="num">${r.qty}</td>
-        <td class="num">NT$${r.costTotal.toLocaleString()}</td>
+        <td class="num">NT$${Math.round(r.costTotal).toLocaleString()}</td>
       </tr>`).join('')}
-      <tr class="total-row">
-        <td colspan="5">合計</td>
-        <td class="num">${grandQty}</td>
-        <td class="num">NT$${grandTotal.toLocaleString()}</td>
-      </tr>
+      <tr class="total-row"><td colspan="6">進貨總計</td><td class="num">${grandQty}</td><td class="num">NT$${grandTotal.toLocaleString()}</td></tr>
+      <tr class="total-row"><td colspan="7">發票金額（×5%）</td><td class="num">NT$${invoice.toLocaleString()}</td></tr>
+      <tr class="total-row"><td colspan="7">進貨＋發票合計</td><td class="num">NT$${(grandTotal+invoice).toLocaleString()}</td></tr>
     </tbody>`;
   openModal('cost-modal');
 }
@@ -845,15 +867,24 @@ function exportCostCSV(){
   if(!orders.length){alert('沒有訂單資料');return;}
   const map={};
   orders.forEach(o=>o.items.forEach(it=>{
-    const key=(it.code||'')+it.name+it.variant;
-    if(!map[key]) map[key]={code:it.code||'',name:it.name,variant:it.variant,price:it.price,cost:it.cost,qty:0,costTotal:0};
-    map[key].qty+=it.qty;
-    map[key].costTotal=Math.round((map[key].costTotal+it.costSubtotal)*10)/10;
+    const key=(it.code||'')+'|'+(it.name||'')+'|'+(it.variant||'');
+    const empP=Math.round(Number(it.empPrice)||0);
+    const costP=Math.round(Number(it.cost)||0);
+    const origP=costP>0?Math.round(costP/0.6/1.05):0;
+    const qty=Number(it.qty)||0;
+    const costSub=Math.round(Number(it.costSubtotal)||0);
+    if(!map[key]) map[key]={code:it.code||'',name:it.name||'',variant:it.variant||'',origPrice:origP,empPrice:empP,costPrice:costP,qty:0,costTotal:0};
+    map[key].qty+=qty;
+    map[key].costTotal+=costSub;
   }));
   const rows=Object.values(map);
-  let csv='\uFEFF型號,品名,款式,型錄原價,進貨單價,總數量,進貨總額\n';
-  rows.forEach(r=>{csv+=`"${r.code}","${r.name}","${r.variant==='標準'?'':r.variant}",${r.price},${r.cost},${r.qty},${r.costTotal}
-`;});
+  const grandTotal=Math.round(rows.reduce((s,r)=>s+r.costTotal,0));
+  const invoice=Math.round(grandTotal*0.05);
+  let csv='\uFEFF型號,品名,款式,型錄原價,員工價,進貨單價,數量,進貨小計\n';
+  rows.forEach(r=>{csv+=`"${r.code}","${r.name}","${!r.variant||r.variant==='標準'?'':r.variant}",${r.origPrice},${r.empPrice},${r.costPrice},${r.qty},${Math.round(r.costTotal)}\n`;});
+  csv+=`,,,,,,進貨總計,${grandTotal}\n`;
+  csv+=`,,,,,,發票（×5%）,${invoice}\n`;
+  csv+=`,,,,,,進貨＋發票合計,${grandTotal+invoice}\n`;
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download='比得兔進貨成本.csv';a.click();
 }
 
@@ -861,8 +892,12 @@ function exportOrdersCSV(){
   if(!orders.length){alert('目前沒有訂單資料');return;}
   let csv='\uFEFF訂單時間,姓名,電話,單位,型號,類別,品名,款式,數量,員工單價,員工小計,進貨單價,進貨小計\n';
   orders.forEach(o=>o.items.forEach(it=>{
-    csv+=`"${o.time}","${o.name}","${o.phone}","${o.dept}","${it.code||''}","${it.cat}","${it.name}","${it.variant==='標準'?'':it.variant}",${it.qty},${it.empPrice},${it.subtotal},${it.cost},${it.costSubtotal}
-`;
+    const ep=Math.round(Number(it.empPrice)||0);
+    const sub=Math.round(Number(it.subtotal)||0);
+    const cost=Math.round(Number(it.cost)||0);
+    const costSub=Math.round(Number(it.costSubtotal)||0);
+    const vname=(!it.variant||it.variant==='標準')?'':it.variant;
+    csv+=`"${o.time||''}","${o.name||''}","${o.phone||''}","${o.dept||''}","${it.code||''}","${it.cat||''}","${it.name||''}","${vname}",${Number(it.qty)||0},${ep},${sub},${cost},${costSub}\n`;
   }));
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download='比得兔員工訂單.csv';a.click();
 }
