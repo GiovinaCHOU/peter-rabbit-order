@@ -252,7 +252,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);color:var(--t
           <div class="info-card-title">① 填寫個人資料</div>
           <div class="info-grid">
             <div class="form-group"><label>姓名 *</label><input id="emp-name" placeholder="王小明" autocomplete="name"></div>
-            <div class="form-group"><label>電話 *</label><input id="emp-phone" placeholder="0912-345-678" autocomplete="tel"></div>
+            <div class="form-group"><label>電話 *</label><input id="emp-phone" placeholder="0912345678" autocomplete="tel" inputmode="tel" maxlength="10"></div>
             <div class="form-group"><label>所屬單位 *</label><input id="emp-dept" placeholder="行銷部"></div>
           </div>
         </div>
@@ -618,7 +618,6 @@ function openConfirmModal(){
   const phone=document.getElementById('emp-phone').value.trim();
   const dept=document.getElementById('emp-dept').value.trim();
   if(!name||!phone||!dept){
-    // 捲動到資料填寫區並高亮
     document.querySelector('.info-card').scrollIntoView({behavior:'smooth',block:'center'});
     if(!name) document.getElementById('emp-name').style.borderColor='#c0392b';
     if(!phone) document.getElementById('emp-phone').style.borderColor='#c0392b';
@@ -629,6 +628,13 @@ function openConfirmModal(){
       document.getElementById('emp-dept').style.borderColor='';
     },2500);
     alert('⚠️ 請先填寫姓名、電話及所屬單位！');
+    return;
+  }
+  const phoneDigits=phone.replace(/\D/g,'');
+  if(phoneDigits.length<10){
+    document.getElementById('emp-phone').style.borderColor='#c0392b';
+    setTimeout(()=>{document.getElementById('emp-phone').style.borderColor='';},2500);
+    alert('⚠️ 電話號碼請填寫完整10碼！');
     return;
   }
   const items=Object.values(cart).filter(i=>i.qty>0);
@@ -653,19 +659,23 @@ function doSubmitOrder(){
   const phone=document.getElementById('emp-phone').value.trim();
   const dept=document.getElementById('emp-dept').value.trim();
   const items=Object.values(cart).filter(i=>i.qty>0).map(it=>({
-    ...it,empPrice:empPrice(it.price),cost:costPrice(it.price),
-    subtotal:empPrice(it.price)*it.qty,
-    costSubtotal:Math.round(costPrice(it.price)*it.qty*10)/10
+    ...it,
+    price:it.price,
+    empPrice:Math.round(empPrice(it.price)),
+    cost:Math.round(costPrice(it.price)),
+    subtotal:Math.round(empPrice(it.price)*it.qty),
+    costSubtotal:Math.round(costPrice(it.price)*it.qty)
   }));
   const order={
     id:Date.now(),time:new Date().toLocaleString('zh-TW'),
     name,phone,dept,items,
-    total:items.reduce((s,i)=>s+i.subtotal,0),
-    totalCost:Math.round(items.reduce((s,i)=>s+i.costSubtotal,0)*10)/10
+    total:Math.round(items.reduce((s,i)=>s+i.subtotal,0)),
+    totalCost:Math.round(items.reduce((s,i)=>s+i.costSubtotal,0))
   };
   if(SCRIPT_URL){fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(order)}).catch(()=>{});}
   orders.push(order);
   cart={};
+  renderCart();
   closeModal('confirm-modal');
   document.getElementById('order-main').style.display='none';
   document.getElementById('order-success').style.display='block';
@@ -794,9 +804,11 @@ function renderAdmin(){
 
 // ===== DELETE ORDER =====
 function openDeleteModal(id){
-  deletingOrderId=id;
-  const o=orders.find(x=>x.id===id);
-  document.getElementById('delete-order-info').textContent=o.name+' ／ '+o.dept+' ／ NT$'+o.total.toLocaleString();
+  deletingOrderId=String(id);
+  const o=orders.find(x=>String(x.id)===String(id));
+  if(!o){alert('找不到此訂單');return;}
+  const total=Math.round(o.items.reduce((s,it)=>s+(Number(it.subtotal)||0),0));
+  document.getElementById('delete-order-info').textContent=(o.name||'—')+' ／ '+(o.dept||'—')+' ／ NT$'+total.toLocaleString();
   document.getElementById('delete-pw').value='';
   document.getElementById('delete-err').textContent='';
   openModal('delete-modal');
@@ -805,17 +817,15 @@ function confirmDelete(){
   const pw=document.getElementById('delete-pw').value;
   if(pw!==ADMIN_PW){document.getElementById('delete-err').textContent='密碼錯誤';document.getElementById('delete-pw').value='';return;}
   const idToDelete=deletingOrderId;
-  // 先關閉 modal，更新前端
-  orders=orders.filter(o=>o.id!==idToDelete);
+  orders=orders.filter(o=>String(o.id)!==String(idToDelete));
   deletingOrderId=null;
   closeModal('delete-modal');
   renderAdmin();
-  // 真正刪除試算表資料
   fetch(SCRIPT_URL,{
     method:'POST',
     mode:'no-cors',
     headers:{'Content-Type':'text/plain'},
-    body:JSON.stringify({action:'delete', orderId: idToDelete})
+    body:JSON.stringify({action:'delete',orderId:idToDelete})
   }).catch(()=>{});
 }
 
@@ -827,7 +837,7 @@ function openCostDetail(){
     const key=(it.code||'')+'|'+(it.name||'')+'|'+(it.variant||'');
     const empP=Math.round(Number(it.empPrice)||0);
     const costP=Math.round(Number(it.cost)||0);
-    const origP=costP>0?Math.round(costP/0.6/1.05):0;
+    const origP=Math.round(Number(it.price)||0);
     const qty=Number(it.qty)||0;
     const costSub=Math.round(Number(it.costSubtotal)||0);
     if(!map[key]) map[key]={code:it.code||'',name:it.name||'',variant:it.variant||'',origPrice:origP,empPrice:empP,costPrice:costP,qty:0,costTotal:0};
@@ -870,7 +880,7 @@ function exportCostCSV(){
     const key=(it.code||'')+'|'+(it.name||'')+'|'+(it.variant||'');
     const empP=Math.round(Number(it.empPrice)||0);
     const costP=Math.round(Number(it.cost)||0);
-    const origP=costP>0?Math.round(costP/0.6/1.05):0;
+    const origP=Math.round(Number(it.price)||0);
     const qty=Number(it.qty)||0;
     const costSub=Math.round(Number(it.costSubtotal)||0);
     if(!map[key]) map[key]={code:it.code||'',name:it.name||'',variant:it.variant||'',origPrice:origP,empPrice:empP,costPrice:costP,qty:0,costTotal:0};
