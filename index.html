@@ -662,7 +662,7 @@ function doSubmitOrder(){
     total:items.reduce((s,i)=>s+i.subtotal,0),
     totalCost:Math.round(items.reduce((s,i)=>s+i.costSubtotal,0)*10)/10
   };
-  if(SCRIPT_URL){fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(order)}).catch(()=>{});}
+  if(SCRIPT_URL){fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify(order)}).catch(()=>{});}
   orders.push(order);
   cart={};
   closeModal('confirm-modal');
